@@ -2,6 +2,7 @@
 #!/usr/bin/python
 
 import numpy as np
+from LSTMCell import LSTM
 
 
 class RecurrentNeuralNetwork:
@@ -56,7 +57,7 @@ class RecurrentNeuralNetwork:
 	def forwardProp(self):
 		for i in range(1, self.rl+1):
 			self.LSTM.x = np.hstack((self.ha[i-1], self.x))
-			cs, hs, f, c, o = self.LSTM.forwardProp()
+			cs, hs, f, inp, c, o = self.LSTM.forwardProp()
 			#store computed cell state
 			self.ca[i] = cs
 			self.ha[i] = hs
@@ -165,5 +166,4 @@ class RecurrentNeuralNetwork:
 			self.x = newX
 		#return all outputs    
 		return self.oa
-
 
