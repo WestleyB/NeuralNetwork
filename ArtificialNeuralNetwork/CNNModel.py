@@ -50,7 +50,7 @@ if __name__ == "__main__":
 	print('\n> Launch CNN...')
 	start = time.time()
 
-	num_epoch = 100
+	num_epoch = 500
 
 	image_matrix, image_label, image_test_matrix, image_test_label = loadData()
 
@@ -66,9 +66,12 @@ if __name__ == "__main__":
 			CNN.backProp(current_image_label)
 			CNN.update()
 
-		print("Current iter : ", iter, " Current cost: ", CNN.total_error, end='\n')
+		print("\tCurrent iter : ", iter, " Current cost: ", CNN.total_error, end='\n')
 		CNN.total_error = 0
 
-	print('\n> End of CNN Training in {}'.format(time.time() - start))
+	print('\n> End of CNN Training in {}'.format(round(time.time() - start, 2)))
+
+	CNN.predict(image_test_matrix, image_test_label)
 
 	print('\n> ...The End')
+

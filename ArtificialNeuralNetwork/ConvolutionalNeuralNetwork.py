@@ -299,6 +299,64 @@ class ConvolutionalNeuralNetwork:
 		return
 
 
+	def predict(self, image_test_matrix, image_test_label):
+		self.predict = np.array([])
+
+		for image_index in range(len(image_test_matrix)):
+
+			current_image = image_test_matrix[image_index]
+
+			self.l1aIN, self.l1bIN = np.pad(current_image, 1, mode='constant'), np.pad(current_image, 1, mode='constant')
+
+			self.l1a = convolve2d(self.l1aIN, self.w1a, mode='valid')
+			self.l1aA = self.ReLU(self.l1a)
+			self.l1aM = skimage.measure.block_reduce(self.l1aA, block_size=(2, 2), func=np.max)
+
+			self.l1b = convolve2d(self.l1bIN, self.w1b, mode='valid')
+			self.l1bA = self.arctanh(self.l1b)
+			self.l1bM = skimage.measure.block_reduce(self.l1bA, block_size=(2, 2), func=np.max)
+
+			self.l2aIN, self.l2bIN = np.pad(self.l1aM, 1, mode='constant'), np.pad(self.l1aM, 1, mode='constant')
+			self.l2cIN, self.l2dIN = np.pad(self.l1bM, 1, mode='constant'), np.pad(self.l1bM, 1, mode='constant')
+
+			self.l2a = convolve2d(self.l2aIN, self.w2a, mode='valid')
+			self.l2aA = self.arctanh(self.l2a)
+			self.l2aM = skimage.measure.block_reduce(self.l2aA, block_size=(2, 2), func=np.max)
+
+			self.l2b = convolve2d(self.l2bIN, self.w2b, mode='valid')
+			self.l2bA = self.ReLU(self.l2b)
+			self.l2bM = skimage.measure.block_reduce(self.l2bA, block_size=(2,2), func=np.max)
+			
+			self.l2c = convolve2d(self.l2cIN, self.w2c, mode='valid')
+			self.l2cA = self.arctanh(self.l2c)
+			self.l2cM = skimage.measure.block_reduce(self.l2cA, block_size=(2, 2), func=np.max)
+
+			self.l2d = convolve2d(self.l2dIN, self.w2d, mode='valid')
+			self.l2dA = self.tanh(self.l2d)
+			self.l2dM = skimage.measure.block_reduce(self.l2dA, block_size=(2, 2), func=np.max)
+
+			self.l3IN = np.expand_dims(np.hstack([self.l2aM.ravel(), self.l2bM.ravel(), self.l2cM.ravel(), self.l2dM.ravel()]), axis=0)
+
+			self.l3 = self.l3IN.dot(self.w3)
+			self.l3A = self.arctanh(self.l3)
+
+			self.l4 = self.l3A.dot(self.w4)
+			self.l4A = self.tanh(self.l4)
+
+			self.l5 = self.l4A.dot(self.w5)
+			self.l5A = self.log(self.l5)
+
+			self.predict = np.append(self.predict, self.l5A)
+			
+		print('---- Ground Truth -----')
+		print(image_test_label.T)
+
+		print('---- Predicted  -----')
+		print(self.predict.T)
+
+		print('---- Predicted Rounded -----')
+		print(np.round(self.predict.T))
+
 
 
 
