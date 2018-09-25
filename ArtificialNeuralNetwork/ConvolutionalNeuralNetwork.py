@@ -18,20 +18,15 @@ np.random.seed(42)
 class ConvolutionalNeuralNetwork:
 	"""
 	Params:
-	data:
-	labels:
 	num_epoch: number of epochs
 	learning_rate:
 	total_error:
 	alpha:
 	"""
-	def __init__(self, data, labels, num_epoch=500, learning_rate=0.0001, total_error=0, alpha=0.00008):
-
-		self.data = data
-		self.labels = labels
+	def __init__(self, num_epoch=500, learning_rate=0.0001, total_error=0, alpha=0.00008):
 
 		self.num_epoch = num_epoch
-		self.lr = learning_rate
+		self.learning_rate = learning_rate
 		self.total_error = total_error
 		self.alpha = alpha
 
@@ -106,37 +101,37 @@ class ConvolutionalNeuralNetwork:
 		# Red Circle → Activation and Max Pooling Layer Applied to Layer 1
 		self.l1aIN, self.l1bIN = np.pad(data, 1, mode='constant'), np.pad(data, 1, mode='constant')
 
-		l1a = convolve2d(self.l1aIN, self.w1a, mode='valid')
-		self.l1aA = self.ReLU(l1a)
+		self.l1a = convolve2d(self.l1aIN, self.w1a, mode='valid')
+		self.l1aA = self.ReLU(self.l1a)
 		self.l1aM = skimage.measure.block_reduce(self.l1aA, block_size=(2, 2), func=np.max)
 
-		l1b = convolve2d(self.l1bIN, self.w1b, mode='valid')
-		self.l1bA = self.arctanh(l1b)
-		self.l1bM = skimage.measure.block_reduce(l1bA, block_size=(2, 2), func=np.max)
+		self.l1b = convolve2d(self.l1bIN, self.w1b, mode='valid')
+		self.l1bA = self.arctanh(self.l1b)
+		self.l1bM = skimage.measure.block_reduce(self.l1bA, block_size=(2, 2), func=np.max)
 		return
 
 	def layer_2(self):
 		# Blue Star → Layer 2 with four difference channels
 		# Blue Circle → Activation and Max Pooling operation Applied to Layer 2
 
-		l2aIN, l2bIN = np.pad(self.l1aM, 1, mode='constant'), np.pad(self.l1aM, 1, mode='constant')
-		l2cIN, l2dIN = np.pad(self.l1bM, 1, mode='constant'), np.pad(self.l1bM, 1, mode='constant')
+		self.l2aIN, self.l2bIN = np.pad(self.l1aM, 1, mode='constant'), np.pad(self.l1aM, 1, mode='constant')
+		self.l2cIN, self.l2dIN = np.pad(self.l1bM, 1, mode='constant'), np.pad(self.l1bM, 1, mode='constant')
 
-		l2a = convolve2d(l2aIN, self.w2a, mode='valid')
-		self.l2aA = self.arctanh(l2a)
+		self.l2a = convolve2d(self.l2aIN, self.w2a, mode='valid')
+		self.l2aA = self.arctanh(self.l2a)
 		self.l2aM = skimage.measure.block_reduce(self.l2aA, block_size=(2, 2), func=np.max)
 
-		l2b = convolve2d(l2bIN, self.w2b, mode='valid')
-		self.l2bA = self.ReLU(l2b)
-		self.l2bM = skimage.measure.block_reduce(l2bA, block_size=(2, 2), func=np.max)		
+		self.l2b = convolve2d(self.l2bIN, self.w2b, mode='valid')
+		self.l2bA = self.ReLU(self.l2b)
+		self.l2bM = skimage.measure.block_reduce(self.l2bA, block_size=(2, 2), func=np.max)		
 
-		l2c = convolve2d(l2cIN, self.w2c, mode='valid')
-		self.l2cA = self.arctanh(l2c)
-		self.l2cM = skimage.measure.block_reduce(l2cA, block_size=(2, 2), func=np.max)
+		self.l2c = convolve2d(self.l2cIN, self.w2c, mode='valid')
+		self.l2cA = self.arctanh(self.l2c)
+		self.l2cM = skimage.measure.block_reduce(self.l2cA, block_size=(2, 2), func=np.max)
 
-		l2d = convolve2d(l2dIN, self.w2d, mode='valid')
-		self.l2dA = self.ReLU(l2d)
-		self.l2dM = skimage.measure.block_reduce(l2dA, block_size=(2, 2), func=np.max)
+		self.l2d = convolve2d(self.l2dIN, self.w2d, mode='valid')
+		self.l2dA = self.ReLU(self.l2d)
+		self.l2dM = skimage.measure.block_reduce(self.l2dA, block_size=(2, 2), func=np.max)
 		return
 
 	def layer_3(self):
@@ -146,15 +141,15 @@ class ConvolutionalNeuralNetwork:
 		self.l3IN = np.expand_dims(np.hstack([self.l2aM.ravel(), self.l2bM.ravel(), self.l2cM.ravel(), self.l2dM.ravel()]), axis=0)
 
 		self.l3 = self.l3IN.dot(self.w3)
-		self.l3A = self.arctanh(l3)
+		self.l3A = self.arctanh(self.l3)
 		return
 
 	def layer_4(self):
 		# Pink Star → Layer 4 with Fully Connected Weight (W4) Dimension of (28*36)
 		# Pink Circle → Activation Layer Applied to Layer 4
 
-		l4 = self.l3A.dot(self.w4)
-		self.l4A = self.tanh(l4)
+		self.l4 = self.l3A.dot(self.w4)
+		self.l4A = self.tanh(self.l4)
 		return
 
 	def layer_5(self):
@@ -197,12 +192,12 @@ class ConvolutionalNeuralNetwork:
 
 		# Pink → Layer 4
 		grad_4_part_1 = (grad_5_part_1 * grad_5_part_2).dot(self.w5.T)
-		grad_4_part_2 = self.d_tanh(l4)
+		grad_4_part_2 = self.d_tanh(self.l4)
 		grad_4_part_3 = self.l3A
 		self.grad_4 = grad_4_part_3.T.dot(grad_4_part_1 * grad_4_part_2)
 
 		# Green → Layer 3
-		grad_3_part_1 = (grad_4_part_1 * grad_4_part_2).dot(w4.T)
+		grad_3_part_1 = (grad_4_part_1 * grad_4_part_2).dot(self.w4.T)
 		grad_3_part_2 = self.d_arctan(self.l3)
 		grad_3_part_3 = self.l3IN
 		self.grad_3 = grad_3_part_3.T.dot(grad_3_part_1 * grad_3_part_2)
@@ -269,7 +264,7 @@ class ConvolutionalNeuralNetwork:
 		grad_1_part_d = convolve2d(grad_1_part_IN_d_padded, grad_1_part_IN_d, mode='valid')
 
 		grad_1_window_b = grad_1_part_c + grad_1_part_d
-		grad_1_mask_b = np.equal(self.l1bA, l1bM.repeat(2, axis=0).repeat(2, axis=1)).astype(int)
+		grad_1_mask_b = np.equal(self.l1bA, self.l1bM.repeat(2, axis=0).repeat(2, axis=1)).astype(int)
 		grad_1_part_1_b = grad_1_mask_b * grad_1_window_b.repeat(2, axis=0).repeat(2, axis=1)
 		grad_1_part_2_b = self.d_arctan(self.l1b)
 		grad_1_part_3_b = self.l1bIN
@@ -304,62 +299,8 @@ class ConvolutionalNeuralNetwork:
 		return
 
 
-	def sampling(self):
-		"""
-		"""
-		for iter in range(self.num_epoch):
-			for data_index in range(len(self.data)):
-
-				current_data = self.data[data_index]
-				current_label = self.labels[data_index]
-
-				l5A = self.forwardProp(current_data)
-				self.backProp(l5A, current_label)
-
-			print("Current iter : ", iter, " Current cost: ", total_error, end='\n')
-			total_error = 0
 
 
-
-
-
-
-def loadData(shuffle=True):
-	# 1. Prepare data
-	data = load_digits()
-	image = data.images
-	label = data.target
-
-	# 1. Prepare only one and only zero + two, three
-	only_zero_index = np.asarray(np.where(label == 0))
-	only_one_index = np.asarray(np.where(label == 1))
-	# only_two_index = np.asarray(np.where(label == 2))
-	# only_three_index = np.asarray(np.where(label == 3))
-
-	# 1.5 Prepare label
-	only_zero_label = label[only_zero_index].T
-	only_one_label = label[only_one_index].T
-	# only_two_label = label[only_two_index].T
-	# only_three_label = label[only_three_index].T
-	image_label = np.vstack((only_zero_label, only_one_label)) # , only_two_label, only_three_label))
-
-	# 2. Prepare matrix image
-	only_zero_image = np.squeeze(image[only_zero_index])
-	only_one_image = np.squeeze(image[only_one_index])
-	# only_two_image = np.squeeze(image[only_two_index])
-	# only_three_image = np.squeeze(image[only_three_index])
-	image_matrix = np.vstack((only_zero_image, only_one_image)) # , only_two_image, only_three_image))	
-
-	if shuffle:
-		image_matrix, image_label = shuffle(image_matrix,image_label)
-
-	image_test_label = image_label[:10]
-	image_label = image_label[10:]
-
-	image_test_matrix = image_matrix[:10,:,:]
-	image_matrix = image_matrix[10:,:,:]
-
-	return image_matrix, image_label, image_test_matrix, image_test_label
 
 
 
