@@ -19,9 +19,9 @@ class ConvolutionalNeuralNetwork:
 	"""
 	Params:
 	num_epoch: number of epochs
-	learning_rate:
-	total_error:
-	alpha:
+	learning_rate: ...
+	total_error: ...
+	alpha: ...
 	"""
 	def __init__(self, num_epoch=500, learning_rate=0.0001, total_error=0, alpha=0.00008):
 
@@ -94,7 +94,7 @@ class ConvolutionalNeuralNetwork:
 	def d_log(self, x):
 		return self.log(x) * ( 1 - self.log(x))
 
-	def layer_1(self, data):
+	def layer1(self, data):
 		"""
 		"""
 		# Red Star → Layer 1 with two different channels
@@ -110,7 +110,7 @@ class ConvolutionalNeuralNetwork:
 		self.l1bM = skimage.measure.block_reduce(self.l1bA, block_size=(2, 2), func=np.max)
 		return
 
-	def layer_2(self):
+	def layer2(self):
 		# Blue Star → Layer 2 with four difference channels
 		# Blue Circle → Activation and Max Pooling operation Applied to Layer 2
 
@@ -134,7 +134,7 @@ class ConvolutionalNeuralNetwork:
 		self.l2dM = skimage.measure.block_reduce(self.l2dA, block_size=(2, 2), func=np.max)
 		return
 
-	def layer_3(self):
+	def layer3(self):
 		# Green Star → Layer 3 with Fully Connected Weight (W3) Dimension of (16*28)
 		# Green Circle → Activation Function Applied to Layer 3
 
@@ -144,7 +144,7 @@ class ConvolutionalNeuralNetwork:
 		self.l3A = self.arctanh(self.l3)
 		return
 
-	def layer_4(self):
+	def layer4(self):
 		# Pink Star → Layer 4 with Fully Connected Weight (W4) Dimension of (28*36)
 		# Pink Circle → Activation Layer Applied to Layer 4
 
@@ -152,7 +152,7 @@ class ConvolutionalNeuralNetwork:
 		self.l4A = self.tanh(self.l4)
 		return
 
-	def layer_5(self):
+	def layer5(self):
 		# Black Star → Layer 5 with Fully Connected Weight (W5) Dimension of (36*1)
 		# Black Circle → Activation Layer Applied to Layer 5
 
@@ -163,112 +163,135 @@ class ConvolutionalNeuralNetwork:
 
 	def forwardProp(self, current_data):
 		"""
+		Params:
+		current_data: ...
 		"""
-		self.layer_1(current_data)
+		self.layer1(current_data)
 
-		self.layer_2()
+		self.layer2()
 
-		self.layer_3()
+		self.layer3()
 
-		self.layer_4()
+		self.layer4()
 
-		self.layer_5()
+		self.layer5()
 
+
+	def backPropLayer5(self, current_label):
+		# Black → Layer 5
+		self.grad_5_part_1 = self.l5A - current_label
+		self.grad_5_part_2 = self.d_log(self.l5)
+		self.grad_5_part_3 = self.l4A
+		self.grad_5 = self.grad_5_part_3.T.dot(self.grad_5_part_1 * self.grad_5_part_2)
+		return
+
+
+	def backPropLayer4(self):
+		# Pink → Layer 4
+		self.grad_4_part_1 = (self.grad_5_part_1 * self.grad_5_part_2).dot(self.w5.T)
+		self.grad_4_part_2 = self.d_tanh(self.l4)
+		self.grad_4_part_3 = self.l3A
+		self.grad_4 = self.grad_4_part_3.T.dot(self.grad_4_part_1 * self.grad_4_part_2)
+		return
+
+
+	def backPropLayer3(self):
+		# Green → Layer 3
+		self.grad_3_part_1 = (self.grad_4_part_1 * self.grad_4_part_2).dot(self.w4.T)
+		self.grad_3_part_2 = self.d_arctan(self.l3)
+		self.grad_3_part_3 = self.l3IN
+		self.grad_3 = self.grad_3_part_3.T.dot(self.grad_3_part_1 * self.grad_3_part_2)
+		return
+
+
+	def backPropLayer2(self):
+		# Back Propagation respect to all of W2 (W2a, W2b, W2c, and W2d) Implemented
+
+		# First line of code (Underlined Green) → Back Propagating from previous layer 
+		self.grad_2_part_IN = (self.grad_3_part_1 * self.grad_3_part_2).dot(self.w3.T)
+
+		# Green Boxed Region → Calculating Gradient Respect to W2a, W2b, W2c, and W2d in their respective order.
+		self.grad_2_window_a = np.reshape(self.grad_2_part_IN[:, :4], (2,2))
+		self.grad_2_mask_a = np.equal(self.l2aA, self.l2aM.repeat(2, axis=0).repeat(2, axis=1)).astype(int)
+		self.grad_2_part_1_a = self.grad_2_mask_a * self.grad_2_window_a.repeat(2, axis=0).repeat(2, axis=1)
+		self.grad_2_part_2_a = self.d_arctan(self.l2a)
+		self.grad_2_part_3_a = self.l2aIN
+		self.grad_2_a = np.rot90(convolve2d(self.grad_2_part_3_a, np.rot90(self.grad_2_part_2_a * self.grad_2_part_1_a, 2), mode='valid'), 2)
+
+		self.grad_2_window_b = np.reshape(self.grad_2_part_IN[:, 4:8], (2, 2))
+		self.grad_2_mask_b = np.equal(self.l2bA, self.l2bM.repeat(2, axis=0).repeat(2, axis=1)).astype(int)
+		self.grad_2_part_1_b = self.grad_2_mask_b * self.grad_2_window_b.repeat(2, axis=0).repeat(2, axis=1)
+		self.grad_2_part_2_b = self.d_ReLU(self.l2b)
+		self.grad_2_part_3_b = self.l2bIN
+		self.grad_2_b = np.rot90(convolve2d(self.grad_2_part_3_b, np.rot90(self.grad_2_part_2_b * self.grad_2_part_1_b, 2), mode='valid'), 2)
+
+		self.grad_2_window_c = np.reshape(self.grad_2_part_IN[:, 8:12], (2, 2))
+		self.grad_2_mask_c = np.equal(self.l2cA, self.l2cM.repeat(2, axis=0).repeat(2, axis=1)).astype(int)
+		self.grad_2_part_1_c = self.grad_2_mask_c * self.grad_2_window_c.repeat(2, axis=0).repeat(2, axis=1)
+		self.grad_2_part_2_c = self.d_arctan(self.l2c)
+		self.grad_2_part_3_c = self.l2cIN
+		self.grad_2_c = np.rot90(convolve2d(self.grad_2_part_3_c, np.rot90(self.grad_2_part_2_c * self.grad_2_part_1_c, 2), mode='valid'), 2)
+
+		self.grad_2_window_d = np.reshape(self.grad_2_part_IN[:, 12:16], (2, 2))
+		self.grad_2_mask_d = np.equal(self.l2dA, self.l2dM.repeat(2, axis=0).repeat(2, axis=1)).astype(int)
+		self.grad_2_part_1_d = self.grad_2_mask_d * self.grad_2_window_d.repeat(2, axis=0).repeat(2, axis=1)
+		self.grad_2_part_2_d = self.d_tanh(self.l2d)
+		self.grad_2_part_3_d = self.l2dIN
+		self.grad_2_d = np.rot90(convolve2d(self.grad_2_part_3_d, np.rot90(self.grad_2_part_2_d * self.grad_2_part_1_d, 2), mode='valid'), 2)
+		return
+
+
+	def backPropLayer1(self):
+		# Back Propagation Respect to all of W1 (W1a and W1b) Implemented
+
+		# First Red Box → Gradient Respect to W1a
+		self.grad_1_part_IN_a = np.rot90(self.grad_2_part_1_a * self.grad_2_part_2_a, 2)
+		self.grad_1_part_IN_a_padded = np.pad(self.w2a, 2, mode='constant')
+		self.grad_1_part_a = convolve2d(self.grad_1_part_IN_a_padded, self.grad_1_part_IN_a, mode='valid')
+
+		self.grad_1_part_IN_b = np.rot90(self.grad_2_part_1_b * self.grad_2_part_2_b, 2)
+		self.grad_1_part_IN_b_padded = np.pad(self.w2b, 2, mode='constant')
+		self.grad_1_part_b = convolve2d(self.grad_1_part_IN_b_padded, self.grad_1_part_IN_b, mode='valid')		
+
+		self.grad_1_window_a = self.grad_1_part_a + self.grad_1_part_b
+		self.grad_1_mask_a = np.equal(self.l1aA, self.l1aM.repeat(2, axis=0).repeat(2, axis=1)).astype(int)
+		self.grad_1_part_1_a = self.grad_1_mask_a * self.grad_1_window_a.repeat(2, axis=0).repeat(2, axis=1)
+		self.grad_1_part_2_a = self.d_ReLU(self.l1a)
+		self.grad_1_part_3_a = self.l1aIN
+		self.grad_1_a = np.rot90(convolve2d(self.grad_1_part_3_a, np.rot90(self.grad_1_part_1_a * self.grad_1_part_2_a, 2), mode='valid'), 2)
+
+		# Second Red Box → Gradient Respect to W2a
+		self.grad_1_part_IN_c = np.rot90(self.grad_2_part_1_c * self.grad_2_part_2_c, 2)
+		self.grad_1_part_IN_c_padded = np.pad(self.w2c, 2, mode='constant')
+		self.grad_1_part_c = convolve2d(self.grad_1_part_IN_c_padded, self.grad_1_part_IN_c, mode='valid')
+
+		self.grad_1_part_IN_d = np.rot90(self.grad_2_part_1_d * self.grad_2_part_2_d, 2)
+		self.grad_1_part_IN_d_padded = np.pad(self.w2d, 2, mode='constant')
+		self.grad_1_part_d = convolve2d(self.grad_1_part_IN_d_padded, self.grad_1_part_IN_d, mode='valid')
+
+		self.grad_1_window_b = self.grad_1_part_c + self.grad_1_part_d
+		self.grad_1_mask_b = np.equal(self.l1bA, self.l1bM.repeat(2, axis=0).repeat(2, axis=1)).astype(int)
+		self.grad_1_part_1_b = self.grad_1_mask_b * self.grad_1_window_b.repeat(2, axis=0).repeat(2, axis=1)
+		self.grad_1_part_2_b = self.d_arctan(self.l1b)
+		self.grad_1_part_3_b = self.l1bIN
+		self.grad_1_b = np.rot90(convolve2d(self.grad_1_part_3_b, np.rot90(self.grad_1_part_1_b * self.grad_1_part_2_b, 2), mode='valid'), 2)		
+		return
 
 
 	def backProp(self, current_label):
 		"""
+		Params:
+		current_label: ...
 		"""
 		# Black Box → Cost Function using the L2 Norm
 		cost = np.square(self.l5A - current_label).sum() * 0.5
 		self.total_error += cost
 
-		# Black → Layer 5
-		grad_5_part_1 = self.l5A - current_label
-		grad_5_part_2 = self.d_log(self.l5)
-		grad_5_part_3 = self.l4A
-		self.grad_5 = grad_5_part_3.T.dot(grad_5_part_1 * grad_5_part_2)
-
-
-		# Pink → Layer 4
-		grad_4_part_1 = (grad_5_part_1 * grad_5_part_2).dot(self.w5.T)
-		grad_4_part_2 = self.d_tanh(self.l4)
-		grad_4_part_3 = self.l3A
-		self.grad_4 = grad_4_part_3.T.dot(grad_4_part_1 * grad_4_part_2)
-
-		# Green → Layer 3
-		grad_3_part_1 = (grad_4_part_1 * grad_4_part_2).dot(self.w4.T)
-		grad_3_part_2 = self.d_arctan(self.l3)
-		grad_3_part_3 = self.l3IN
-		self.grad_3 = grad_3_part_3.T.dot(grad_3_part_1 * grad_3_part_2)
-
-		# Back Propagation respect to all of W2 (W2a, W2b, W2c, and W2d) Implemented
-
-		# First line of code (Underlined Green) → Back Propagating from previous layer 
-		grad_2_part_IN = (grad_3_part_1 * grad_3_part_2).dot(self.w3.T)
-
-		# Green Boxed Region → Calculating Gradient Respect to W2a, W2b, W2c, and W2d in their respective order.
-		grad_2_window_a = np.reshape(grad_2_part_IN[:, :4], (2,2))
-		grad_2_mask_a = np.equal(self.l2aA, self.l2aM.repeat(2, axis=0).repeat(2, axis=1)).astype(int)
-		grad_2_part_1_a = grad_2_mask_a * grad_2_window_a.repeat(2, axis=0).repeat(2, axis=1)
-		grad_2_part_2_a = self.d_arctan(self.l2a)
-		grad_2_part_3_a = self.l2aIN
-		self.grad_2_a = np.rot90(convolve2d(grad_2_part_3_a, np.rot90(grad_2_part_2_a * grad_2_part_1_a, 2), mode='valid'), 2)
-
-		grad_2_window_b = np.reshape(grad_2_part_IN[:, 4:8], (2, 2))
-		grad_2_mask_b = np.equal(self.l2bA, self.l2bM.repeat(2, axis=0).repeat(2, axis=1)).astype(int)
-		grad_2_part_1_b = grad_2_mask_b * grad_2_window_b.repeat(2, axis=0).repeat(2, axis=1)
-		grad_2_part_2_b = self.d_ReLU(self.l2b)
-		grad_2_part_3_b = self.l2bIN
-		self.grad_2_b = np.rot90(convolve2d(grad_2_part_3_b, np.rot90(grad_2_part_2_b * grad_2_part_1_b, 2), mode='valid'), 2)
-
-		grad_2_window_c = np.reshape(grad_2_part_IN[:, 8:12], (2, 2))
-		grad_2_mask_c = np.equal(self.l2cA, self.l2cM.repeat(2, axis=0).repeat(2, axis=1)).astype(int)
-		grad_2_part_1_c = grad_2_mask_c * grad_2_window_c.repeat(2, axis=0).repeat(2, axis=1)
-		grad_2_part_2_c = self.d_arctan(self.l2c)
-		grad_2_part_3_c = self.l2cIN
-		self.grad_2_c = np.rot90(convolve2d(grad_2_part_3_c, np.rot90(grad_2_part_2_c * grad_2_part_1_c, 2), mode='valid'), 2)
-
-		grad_2_window_d = np.reshape(grad_2_part_IN[:, 12:16], (2, 2))
-		grad_2_mask_d = np.equal(self.l2dA, self.l2dM.repeat(2, axis=0).repeat(2, axis=1)).astype(int)
-		grad_2_part_1_d = grad_2_mask_d * grad_2_window_d.repeat(2, axis=0).repeat(2, axis=1)
-		grad_2_part_2_d = self.d_tanh(self.l2d)
-		grad_2_part_3_d = self.l2dIN
-		self.grad_2_d = np.rot90(convolve2d(grad_2_part_3_d, np.rot90(grad_2_part_2_d * grad_2_part_1_d, 2), mode='valid'), 2)
-
-		# Back Propagation Respect to all of W1 (W1a and W1b) Implemented
-
-		# First Red Box → Gradient Respect to W1a
-		grad_1_part_IN_a = np.rot90(grad_2_part_1_a * grad_2_part_2_a, 2)
-		grad_1_part_IN_a_padded = np.pad(self.w2a, 2, mode='constant')
-		grad_1_part_a = convolve2d(grad_1_part_IN_a_padded, grad_1_part_IN_a, mode='valid')
-
-		grad_1_part_IN_b = np.rot90(grad_2_part_1_b * grad_2_part_2_b, 2)
-		grad_1_part_IN_b_padded = np.pad(self.w2b, 2, mode='constant')
-		grad_1_part_b = convolve2d(grad_1_part_IN_b_padded, grad_1_part_IN_b, mode='valid')		
-
-		grad_1_window_a = grad_1_part_a + grad_1_part_b
-		grad_1_mask_a = np.equal(self.l1aA, self.l1aM.repeat(2, axis=0).repeat(2, axis=1)).astype(int)
-		grad_1_part_1_a = grad_1_mask_a * grad_1_window_a.repeat(2, axis=0).repeat(2, axis=1)
-		grad_1_part_2_a = self.d_ReLU(self.l1a)
-		grad_1_part_3_a = self.l1aIN
-		self.grad_1_a = np.rot90(convolve2d(grad_1_part_3_a, np.rot90(grad_1_part_1_a * grad_1_part_2_a, 2), mode='valid'), 2)
-
-		# Second Red Box → Gradient Respect to W2a
-		grad_1_part_IN_c = np.rot90(grad_2_part_1_c * grad_2_part_2_c, 2)
-		grad_1_part_IN_c_padded = np.pad(self.w2c, 2, mode='constant')
-		grad_1_part_c = convolve2d(grad_1_part_IN_c_padded, grad_1_part_IN_c, mode='valid')
-
-		grad_1_part_IN_d = np.rot90(grad_2_part_1_d * grad_2_part_2_d, 2)
-		grad_1_part_IN_d_padded = np.pad(self.w2d, 2, mode='constant')
-		grad_1_part_d = convolve2d(grad_1_part_IN_d_padded, grad_1_part_IN_d, mode='valid')
-
-		grad_1_window_b = grad_1_part_c + grad_1_part_d
-		grad_1_mask_b = np.equal(self.l1bA, self.l1bM.repeat(2, axis=0).repeat(2, axis=1)).astype(int)
-		grad_1_part_1_b = grad_1_mask_b * grad_1_window_b.repeat(2, axis=0).repeat(2, axis=1)
-		grad_1_part_2_b = self.d_arctan(self.l1b)
-		grad_1_part_3_b = self.l1bIN
-		self.grad_1_b = np.rot90(convolve2d(grad_1_part_3_b, np.rot90(grad_1_part_1_b * grad_1_part_2_b, 2), mode='valid'), 2)
+		self.backPropLayer5(current_label)
+		self.backPropLayer4()
+		self.backPropLayer3()
+		self.backPropLayer2()
+		self.backPropLayer1()
 		return
 
 	def update(self):
